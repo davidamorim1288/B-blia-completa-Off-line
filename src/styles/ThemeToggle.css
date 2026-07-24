@@ -1,0 +1,16 @@
+.theme-toggle {
+  background: var(--accent);
+  color: var(--highlight);
+  border: 1px solid var(--highlight);
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.theme-toggle:hover {
+  background: var(--highlight);
+  color: white;
+}
