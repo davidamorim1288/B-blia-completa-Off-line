@@ -13,15 +13,10 @@ const https = require('https');
 // Configurações
 const BIBLE_REPO = 'https://raw.githubusercontent.com/thiagobodruk/biblia/master/json';
 const OUTPUT_DIR = path.join(__dirname, '../src/data');
-const VERSION = process.argv[2] || 'acf'; // ACF = Almeida Corrigida e Revisada (português)
+const VERSIONS = process.argv.slice(2).length > 0 ? process.argv.slice(2) : ['acf', 'arc']; // ACF = Almeida Corrigida e Revisada, ARC = Almeida Revista e Corrigida
 
-// Nome dos arquivos
-const INPUT_FILE = `${VERSION}.json`;
-const OUTPUT_FILE = `bible-${VERSION}-complete.json`;
-const OUTPUT_PATH = path.join(OUTPUT_DIR, OUTPUT_FILE);
-
-console.log(`\n📥 Baixando Bíblia ${VERSION}...`);
-console.log(`📍 Destino: ${OUTPUT_PATH}\n`);
+console.log(`\n📚 Baixando Bíblias: ${VERSIONS.join(', ').toUpperCase()}...`);
+console.log(`📍 Destino: ${OUTPUT_DIR}\n`);
 
 // Criar diretório se não existir
 if (!fs.existsSync(OUTPUT_DIR)) {
@@ -77,33 +72,43 @@ const processBibleData = (bibleData) => {
   return verses;
 };
 
-// Executar download
-downloadFile(`${BIBLE_REPO}/${INPUT_FILE}`)
-  .then((bibleData) => {
-    console.log('✅ Arquivo baixado com sucesso!\n');
-    
-    const processedVersesCount = Object.keys(bibleData).reduce((total, book) => {
-      return total + Object.keys(bibleData[book]).reduce((subtotal, chapter) => {
-        return subtotal + Object.keys(bibleData[book][chapter]).length;
+// Processar cada versão
+const processVersions = async () => {
+  for (const version of VERSIONS) {
+    try {
+      console.log(`⏳ Processando ${version.toUpperCase()}...`);
+      
+      const bibleData = await downloadFile(`${BIBLE_REPO}/${version}.json`);
+      console.log(`✅ Arquivo ${version}.json baixado com sucesso!`);
+      
+      const bookCount = Object.keys(bibleData).length;
+      const processedVersesCount = Object.keys(bibleData).reduce((total, book) => {
+        return total + Object.keys(bibleData[book]).reduce((subtotal, chapter) => {
+          return subtotal + Object.keys(bibleData[book][chapter]).length;
+        }, 0);
       }, 0);
-    }, 0);
-    
-    console.log(`📖 Livros encontrados: ${Object.keys(bibleData).length}`);
-    console.log(`📝 Versículos processados: ${processedVersesCount}`);
-    
-    // Processar e salvar
-    const processedVerses = processBibleData(bibleData);
-    
-    fs.writeFileSync(
-      OUTPUT_PATH,
-      JSON.stringify(processedVerses, null, 2)
-    );
-    
-    console.log(`\n✨ Bíblia completa salva em: ${OUTPUT_FILE}`);
-    console.log(`📊 Total de versículos: ${processedVerses.length}`);
-    console.log(`\n✅ Pronto para usar no projeto!\n`);
-  })
-  .catch((error) => {
-    console.error(`\n❌ Erro: ${error.message}\n`);
-    process.exit(1);
-  });
+      
+      console.log(`📖 Livros encontrados: ${bookCount}`);
+      console.log(`📝 Versículos processados: ${processedVersesCount}`);
+      
+      // Processar e salvar
+      const processedVerses = processBibleData(bibleData);
+      const OUTPUT_FILE = `bible-${version}-complete.json`;
+      const OUTPUT_PATH = path.join(OUTPUT_DIR, OUTPUT_FILE);
+      
+      fs.writeFileSync(
+        OUTPUT_PATH,
+        JSON.stringify(processedVerses, null, 2)
+      );
+      
+      console.log(`✨ Bíblia ${version.toUpperCase()} salva em: ${OUTPUT_FILE}`);
+      console.log(`📊 Total de versículos: ${processedVerses.length}\n`);
+    } catch (error) {
+      console.error(`\n❌ Erro ao processar ${version.toUpperCase()}: ${error.message}\n`);
+    }
+  }
+  
+  console.log(`\n✅ Download e processamento concluído!\n`);
+};
+
+processVersions();
